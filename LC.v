@@ -53,7 +53,7 @@ Fixpoint
       apply H.
 Defined.
 
-Extraction Implicit lookup [a x ix].
+Extraction Implicit lookup [x ix].
 
 Definition index_0_get {a} {x y : a} {xs} (ix : index 0 (x :: xs) y) : x = y.
   inversion ix. subst. auto.
@@ -66,31 +66,12 @@ Defined.
 Inductive value {ctx} : forall {A}, term ctx A -> Type :=
 | value_lam : forall {X Y} {s : term (X :: ctx) (X ==> Y)}, value (term_lam s).
 
-Fixpoint subst {A B xs} (tm : term (A :: xs) B) (x : term xs A) : term xs B.
-  inversion tm; subst.
-  - (* term_var *)
-    destruct n.
-    + (* O *)
-      rewrite <- (index_0_get ix).
-      assumption.
-    + (* S *)
-      apply (@term_var n). apply (index_S_tail ix).
-  - (* term_app *)
-    apply (@term_app xs a B).
-    apply (subst _ _ _ H x).
-    apply (subst _ _ _ H0 x).
-  - (* term_lam *)
-
 Reserved Notation "x ↓ y" (at level 60, no associativity).
 Inductive smallstep {ctx : list ty} : forall {A}, term ctx A -> term ctx A -> Type :=
 | step_app :
     forall {X Y} {a : term ctx (X ==> Y)} {a' b},
       a ↓ a' -> term_app a b ↓ term_app a' b
-| step_beta : term_app (term_lam s) x ↓ s[x]
 where "x ↓ y" := (smallstep x y).
 
-
-    
-
-
-Extraction "extracted" ty term lookup.
+Unset Extraction SafeImplicits.
+Extraction "LC" ty term lookup.
