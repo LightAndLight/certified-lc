@@ -66,6 +66,15 @@ Defined.
 Inductive value {ctx} : forall {A}, term ctx A -> Type :=
 | value_lam : forall {X Y} {s : term (X :: ctx) (X ==> Y)}, value (term_lam s).
 
+(*
+
+extraction implicit doesn't work for implicits in higher order functions.
+
+also, it's easy to get stuck between Prop and Set when trying to do erased
+proof carrying implementations.
+
+*)
+
 Reserved Notation "x ↓ y" (at level 60, no associativity).
 Inductive smallstep {ctx : list ty} : forall {A}, term ctx A -> term ctx A -> Type :=
 | step_app :
