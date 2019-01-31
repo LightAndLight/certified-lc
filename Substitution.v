@@ -74,30 +74,42 @@ Proof.
     apply (Nat.succ_inj_wd_neg n' n) in H. assumption.
 Qed.
 
+Theorem substituteNat_eq : forall n x, substituteNat n n x = x.
+Proof.
+  unfold substituteNat.
+  induction n.
+  - (* O *)
+    reflexivity.
+  - (* S *)
+    intros. simpl. apply substituteNat_inner_eq.
+Qed.
+
+Theorem substituteNat_neq : forall n' n x, n' <> n -> substituteNat n' n x = term_bvar n'.
+Proof.
+  intros n' n. induction n', n.
+  - (* O, O *)
+    contradiction.
+  - auto.
+  - auto.
+  - intros x Contra.
+    apply (Nat.succ_inj_wd_neg n' n) in Contra.
+    unfold substituteNat. simpl.
+    apply substituteNat_inner_neq. assumption.
+Qed.
+
 Theorem substituteNat_correct :
   forall n' n x,
     substituteNat_spec n' n x = substituteNat n' n x.
 Proof.
-  unfold substituteNat_spec. unfold substituteNat.
-  induction n'.
-  - (* O *)
-    unfold substituteNat_inner.
-    destruct n. reflexivity. reflexivity.
-  - (* S *)
-    destruct n.
-    + (* O *)
-      reflexivity.
-    + simpl.
-      destruct (Nat.eq_dec n' n).
-      * (* = *)
-        rewrite e in *. rewrite (Nat.eqb_refl n).
-        intros. symmetry. apply substituteNat_inner_eq.
-      * (* <> *)
-        pose (n0' := n0).
-        apply Nat.eqb_neq in n0'. rewrite n0'.
-        intros. symmetry.
-        apply substituteNat_inner_neq.
-        assumption.
+  unfold substituteNat_spec.
+  intros n' n.
+  destruct (Nat.eq_dec n' n).
+  - (* = *)
+    rewrite e. rewrite (Nat.eqb_refl n). symmetry. apply (substituteNat_eq n).
+  - (* <> *)
+    pose (n0' := n0).
+    apply Nat.eqb_neq in n0'. rewrite n0'.
+    symmetry. apply (substituteNat_neq n' n x). assumption.
 Qed.
 
 Theorem substituteNat_type :
@@ -127,12 +139,18 @@ Theorem substitute_type :
   fs || bs |- s ∈ A ->
   fs || bs |- substitute s n x ∈ A.
 Proof.
-  induction s.
+  induction s; intros; simpl; inversion H1; subst.
   - (* term_bvar *)
-    intros. simpl.
     destruct (Nat.eq_dec n n0).
     + (* = *)
-      rewrite e in *. inversion H1. subst.
+      rewrite e in *.
       rewrite (index_inj H H5) in *.
-      apply substituteNat_type. assumption. assumption.
+      rewrite (substituteNat_eq n0 x).
+      assumption.
     + (* <> *)
+      apply (substituteNat_neq n n0 x) in n1.
+      rewrite n1.
+      assumption.
+  - (* term_fvar *)
+    constructor. assumption.
+
