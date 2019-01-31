@@ -1,9 +1,41 @@
 Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Init.Nat.
+Require Import Coq.Program.Basics.
 
 Require Import LC.Term.
 Require Import LC.Ty.
 Require Import LC.HasType.
+
+Open Scope program_scope.
+
+Fixpoint renaming (f : nat -> nat) (tm : term) : term :=
+  match tm with
+  | term_bvar x => term_bvar (f x)
+  | term_fvar _ => tm
+  | term_app a b => term_app (renaming f a) (renaming f b)
+  | term_lam x => term_lam (renaming (S ∘ f ∘ S) x)
+  | term_shift x => term_shift (renaming f x)
+  end.
+
+Theorem renaming_type :
+  forall tm fs bs f B,
+  (forall n (A : type), index n bs A -> index (f n) bs A) ->
+  fs || bs |- tm ∈ B ->
+  fs || bs |- renaming f tm ∈ B.
+Proof.                             
+  induction tm; intros; inversion H0; subst; simpl.
+  - (* term_bvar *)
+    constructor. apply H. assumption.
+  - (* term_fvar *)
+    assumption.
+  - (* term_app *)
+    econstructor.
+    apply IHtm1. assumption. eassumption.
+    apply IHtm2. assumption. assumption.
+  - (* term_lam *)
+    constructor.
+    apply IHtm. unfold "∘".
+    + intros. apply there. apply H.
 
 Definition substituteNat_spec (n' : nat) (n : nat) (x : term) : term :=
   match eqb n' n with
@@ -123,12 +155,9 @@ Proof.
   apply substituteNat_spec_type. assumption. assumption.
 Qed.
 
-Fixpoint
-  substitute_inner
-  (f : nat -> nat) (s : term) (n : nat) (x : term) : term :=
-
+Fixpoint substitute_spec (s : term) (n : nat) (x : term) : term :=
   match s with
-  | term_bvar n' => substituteNat_inner f n' n x
+  | term_bvar n' => substituteNat f n' n x
   | term_fvar a => term_fvar a
   | term_app a b =>
       term_app (substitute_inner f a n x) (substitute_inner f b n x)
@@ -143,10 +172,6 @@ Fixpoint
     end
   end.
 Hint Unfold substitute_inner.
-
-Definition substitute (s : term) (n : nat) (x : term) : term :=
-  substitute_inner (fun x => x) s n x.
-Hint Unfold substitute.
 
 Theorem substitute_inner_type :
   forall s n f x fs bs A B,
