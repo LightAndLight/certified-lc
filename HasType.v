@@ -7,6 +7,17 @@ Inductive index {A} : nat -> list A -> A -> Prop :=
 | here : forall {x xs}, index 0 (x :: xs) x
 | there : forall {n x y xs}, index n xs x -> index (S n) (y :: xs) x.
 
+Theorem index_inj : forall {A n} {xs : list A} {a b}, index n xs a -> index n xs b -> a = b.
+Proof.
+  intros A n xs a b H. generalize dependent b.
+  induction H; intros.
+  - (* here *)
+    inversion H. subst. reflexivity.
+  - (* there *)
+    apply IHindex.
+    inversion H0. subst. assumption.
+Qed.
+
 Inductive has_type : (string -> option type) -> list type -> term -> type -> Prop :=
 | ht_bvar :
     forall {fs bs n A},

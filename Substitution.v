@@ -110,3 +110,29 @@ Proof.
   rewrite <- (substituteNat_correct n' n x).
   apply substituteNat_spec_type. assumption. assumption.
 Qed.
+
+Fixpoint substitute (s : term) (n : nat) (x : term) : term :=
+  match s with
+  | term_bvar n' => substituteNat n' n x
+  | term_fvar a => term_fvar a
+  | term_app a b => term_app (substitute a n x) (substitute b n x)
+  | term_lam a => term_lam (substitute a n (term_shift x))
+  | term_shift a => term_shift (substitute a n x)
+  end.
+
+Theorem substitute_type :
+  forall s n x fs bs A B,
+  index n bs B ->
+  fs || bs |- x ∈ B ->
+  fs || bs |- s ∈ A ->
+  fs || bs |- substitute s n x ∈ A.
+Proof.
+  induction s.
+  - (* term_bvar *)
+    intros. simpl.
+    destruct (Nat.eq_dec n n0).
+    + (* = *)
+      rewrite e in *. inversion H1. subst.
+      rewrite (index_inj H H5) in *.
+      apply substituteNat_type. assumption. assumption.
+    + (* <> *)
