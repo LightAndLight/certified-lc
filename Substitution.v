@@ -1,9 +1,9 @@
 Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Init.Nat.
 
-Require Import Term.
-Require Import Ty.
-Require Import HasType.
+Require Import LC.Term.
+Require Import LC.Ty.
+Require Import LC.HasType.
 
 Definition substituteNat_spec (n' : nat) (n : nat) (x : term) : term :=
   match eqb n' n with
@@ -123,14 +123,39 @@ Proof.
   apply substituteNat_spec_type. assumption. assumption.
 Qed.
 
-Fixpoint substitute (s : term) (n : nat) (x : term) : term :=
+Fixpoint
+  substitute_inner
+  (f : nat -> nat) (s : term) (n : nat) (x : term) : term :=
+
   match s with
-  | term_bvar n' => substituteNat n' n x
+  | term_bvar n' => substituteNat_inner f n' n x
   | term_fvar a => term_fvar a
-  | term_app a b => term_app (substitute a n x) (substitute b n x)
-  | term_lam a => term_lam (substitute a n (term_shift x))
-  | term_shift a => term_shift (substitute a n x)
+  | term_app a b =>
+      term_app (substitute_inner f a n x) (substitute_inner f b n x)
+  | term_lam a =>
+      term_lam (substitute_inner f a (S n) (term_shift x))
+  | term_shift a =>
+    match n with
+    | O => s
+    | S k =>
+      term_shift
+        (substitute_inner (fun x => match f x with O => O | S k => k end) a k x)
+    end
   end.
+Hint Unfold substitute_inner.
+
+Definition substitute (s : term) (n : nat) (x : term) : term :=
+  substitute_inner (fun x => x) s n x.
+Hint Unfold substitute.
+
+Theorem substitute_inner_type :
+  forall s n f x fs bs A B,
+  index n bs B ->
+  index (f n) bs B ->
+  fs || bs |- x ∈ B ->
+  fs || bs |- s ∈ A ->
+  fs || bs |- substitute_inner f s n x ∈ A.
+Proof.
 
 Theorem substitute_type :
   forall s n x fs bs A B,
@@ -139,18 +164,36 @@ Theorem substitute_type :
   fs || bs |- s ∈ A ->
   fs || bs |- substitute s n x ∈ A.
 Proof.
+  unfold substitute.
   induction s; intros; simpl; inversion H1; subst.
   - (* term_bvar *)
     destruct (Nat.eq_dec n n0).
     + (* = *)
       rewrite e in *.
       rewrite (index_inj H H5) in *.
-      rewrite (substituteNat_eq n0 x).
+      rewrite (substituteNat_inner_eq n0 (fun x => x) x).
       assumption.
     + (* <> *)
-      apply (substituteNat_neq n n0 x) in n1.
+      apply (substituteNat_inner_neq n n0 (fun x => x) x) in n1.
       rewrite n1.
       assumption.
   - (* term_fvar *)
     constructor. assumption.
+  - (* term_app *)
+    econstructor.
+    eapply IHs1. apply H. assumption. eassumption.
+    eapply IHs2. apply H. assumption. assumption.
+  - (* term_lam *)
+    constructor.
+    eapply IHs. apply there. apply H.
+    constructor. assumption.
+    assumption.
+  - (* term_shift *)
+    destruct n.
+    + (* O *)
+      assumption.
+    + (* S *)
+      inversion H. subst.
+      constructor.
+      eapply IHs. eassumption.
 

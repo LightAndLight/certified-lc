@@ -1,11 +1,22 @@
 Require Import Coq.Strings.String.
 
-Require Import Term.
-Require Import Ty.
+Require Import LC.Term.
+Require Import LC.Ty.
 
 Inductive index {A} : nat -> list A -> A -> Prop :=
 | here : forall {x xs}, index 0 (x :: xs) x
 | there : forall {n x y xs}, index n xs x -> index (S n) (y :: xs) x.
+
+Theorem here_or_there :
+  forall {A n} {x y : A} {xs},
+    index n (y :: xs) x -> n = 0 \/ (exists k, n = S k).
+Proof.
+  intros. inversion H; subst.
+  - (* here *)
+    auto.
+  - (* there *)
+    right. exists n0. reflexivity.
+Qed.
 
 Theorem index_inj : forall {A n} {xs : list A} {a b}, index n xs a -> index n xs b -> a = b.
 Proof.
